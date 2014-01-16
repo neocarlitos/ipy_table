@@ -272,7 +272,7 @@ class IpyTable(object):
                         else:
                             nCols = '1'
 
-                        if cell_colors[row,column] != pref_vColor[column]:
+                        if cell_colors[row,column] != pref_vColor[column] and not cell_colors[row,column] is None:
                             cell_color = '\cellcolor{' + cell_colors[row,column] + '}'
                         else:
                             cell_color = ''
