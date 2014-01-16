@@ -1,0 +1,24 @@
+((*- extends 'latex_article.tplx' -*))
+
+((* block packages *))
+    ((( super() )))
+
+    % ipy_table package declarations
+    \usepackage{array}
+    \usepackage{multirow}
+    \usepackage{xcolor}
+    \usepackage{colortbl}
+((* endblock packages *))
+
+((* block definitions *))
+    ((( super() )))
+
+    % ipy_table macro definitions can go here
+    \newlength{\Oldarrayrulewidth}
+    \newcommand{\thickline}[2]{%
+      \noalign{\global\setlength{\Oldarrayrulewidth}{\arrayrulewidth}}%
+      \noalign{\global\setlength{\arrayrulewidth}{#1}}\cline{#2}%
+      \noalign{\global\setlength{\arrayrulewidth}{\Oldarrayrulewidth}}}
+
+((* endblock definitions *))
+

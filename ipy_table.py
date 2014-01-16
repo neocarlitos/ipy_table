@@ -58,6 +58,7 @@ This project is maintained at http://github.com/epmoyer/ipy_table
 import copy
 from collections import Counter
 import numpy as np
+import webcolors as webcl
 
 __version__ = 1.12
 
@@ -101,27 +102,6 @@ class IpyTable(object):
                    1: ' ',
                    2: '!{\\vrule width 1pt}',
                    3: '!{\\vrule width 2pt}' } # Double thick line for first and last columns
-
-    # Map color to numbers
-    COLOR_NUM = { 'Ivory': 1,
-              'AliceBlue': 2,
-              'LightGray': 3,
-                   'Pink': 4,
-                   'Cyan': 5 }
-
-    # Map number colours to latex colour definitions
-    COLOR_TEXDEF = { 1: '\\definecolor{Ivory}{rgb}{1,1,0}', # 'Ivory'
-                  2: '\\definecolor{AliceBlue}{rgb}{0.94,0.95,1}', # 'AliceBlue'
-                  3: '\\definecolor{LightGray}{rgb}{0.75,0.75,0.75}', # 'LightGray'
-                  4: '\\definecolor{Pink}{rgb}{1,0.75,0.75}', # 'Pink'
-                  5: '\\definecolor{Cyan}{rgb}{0,1,1}' }# 'Cyan'}
-
-    # Map number colours to latex colour styles
-    COLOR_TEX = { 1: 'Ivory',
-                  2: 'AliceBlue',
-                  3: 'LightGray',
-                  4: 'Pink',
-                  5: 'Cyan' }
 
     #---------------------------------
     # External methods
@@ -207,17 +187,19 @@ class IpyTable(object):
         pref_hColor = [ _get_most_common(cell_colors[i,:]) for i in range(self._num_rows) ]
 
         latex = ''
-        if not hasattr(self, '_has_latex_macros'):
+        # if not hasattr(self, '_has_latex_macros'):
+        if True:
             self._has_latex_macros = True
 
-            print 'WARNING: include \\usepackage{array} on latex template\n'
-            latex += '% Some macros could be added the first time table is created\n'
-            latex += '\\newlength{\\Oldarrayrulewidth}\n'
-            latex += '\\newcommand{\\thickline}[2]{%\n'
-            latex += '  \\noalign{\\global\\setlength{\\Oldarrayrulewidth}{\\arrayrulewidth}}%\n'
-            latex += '  \\noalign{\\global\\setlength{\\arrayrulewidth}{#1}}\\cline{#2}%\n'
-            latex += '  \\noalign{\\global\\setlength{\\arrayrulewidth}{\Oldarrayrulewidth}}}\n'
-            latex += '\n'
+#            print 'WARNING: include \\usepackage{array} on latex template\n'
+#            print 'WARNING: include \\usepackage{xcolor,colortbl} on latex template\n'
+#            latex += '% Some macros could be added the first time table is created\n'
+#            latex += '\\newlength{\\Oldarrayrulewidth}\n'
+#            latex += '\\newcommand{\\thickline}[2]{%\n'
+#            latex += '  \\noalign{\\global\\setlength{\\Oldarrayrulewidth}{\\arrayrulewidth}}%\n'
+#            latex += '  \\noalign{\\global\\setlength{\\arrayrulewidth}{#1}}\\cline{#2}%\n'
+#            latex += '  \\noalign{\\global\\setlength{\\arrayrulewidth}{\Oldarrayrulewidth}}}\n'
+#            latex += '\n'
 
             if pref_width.max()>0:
                 # These macros are required only if fixed column width is used
@@ -226,11 +208,13 @@ class IpyTable(object):
                 latex += '\\newcolumntype{R}[1]{>{\\raggedleft\\let\\newline\\\\\\arraybackslash\\hspace{0pt}}m{#1}}\n'
                 latex += '\n'
 
-            if cell_colors.sum()>0:
-                for colorNum in np.unique(cell_colors):
-                    if colorNum > 0:
-                        latex += self.COLOR_TEXDEF[colorNum] + '\n'
-                latex += '\n'
+            for color in np.unique(cell_colors):
+                if not color is None:
+                    rgb = webcl.name_to_rgb(color)
+                    rgb = [ c/255.0 for c in rgb ]
+                    colorDef = '\\definecolor{' + color + '}}{{rgb}}{{{:.4},{:.4},{:.4}}}\n'.format(rgb[0],rgb[1],rgb[2])
+                    latex += colorDef
+            latex += '\n'
 
         #---------------------------------------
         # Begin tabular
@@ -239,7 +223,7 @@ class IpyTable(object):
         latex += '{'
         for i in range(self._num_columns):
             if pref_vColor[i]>0:
-                color = '>{\\columncolor{' + self.COLOR_TEX[pref_vColor[i]] + '}}'
+                color = '>{\\columncolor{' + pref_vColor[i] + '}}'
             else:
                 color = ''
             if pref_width[i]<0:
@@ -248,7 +232,8 @@ class IpyTable(object):
 	        latex += self.VBORDER_TEX[pref_border[i]] + color + self.ALIGN_TEX_WIDTH[pref_align[i]]
 	        latex += '{' + str(pref_width[i]) + 'px}'
         latex += self.VBORDER_TEX[pref_border[-1]]
-        latex += '}\n' + self._build_line_separator(cell_hBorder[0,:])
+        latex += '}' + self._build_line_separator(cell_hBorder[0,:])
+        latex += '\n'
 
         for row, row_data in enumerate(self.array):
             #---------------------------------------
@@ -278,7 +263,8 @@ class IpyTable(object):
                         row_span = str(self._cell_styles[row][column]['row_span'])
                         item_tex = '\\multirow{' + row_span + '}{*}{' + item_tex + '}'
 
-                    if cell_align[row,column] != pref_align[column] or cell_vBorder[row,column] != pref_border[column] or cell_vBorder[row,column+1] != pref_border[column+1]:
+                    if cell_align[row,column] != pref_align[column] or cell_vBorder[row,column] != pref_border[column] \
+                            or cell_vBorder[row,column+1] != pref_border[column+1] or cell_colors[row,column] != pref_vColor[column]:
                         if 'column_span' in self._cell_styles[row][column]:
                             nCols = self._cell_styles[row][column]['column_span']
                             skip_col_div = nCols-1
@@ -286,8 +272,13 @@ class IpyTable(object):
                         else:
                             nCols = '1'
 
+                        if cell_colors[row,column] != pref_vColor[column]:
+                            cell_color = '\cellcolor{' + cell_colors[row,column] + '}'
+                        else:
+                            cell_color = ''
+
                         cell_format = self.VBORDER_TEX[cell_vBorder[row,column]] + self.ALIGN_TEX[cell_align[row,column]] + self.VBORDER_TEX[cell_vBorder[row,column+1]]
-                        item_tex = '\\multicolumn{' + nCols + '}{' + cell_format + '}{' + item_tex + '}'
+                        item_tex = '\\multicolumn{' + nCols + '}{' + cell_format + '}{' + cell_color + item_tex + '}'
 
                     # Append cell
                     latex += item_tex
@@ -411,12 +402,12 @@ class IpyTable(object):
 
     def _build_color_matrix(self):
         # Column width -1 means 'no width set'
-        colors = np.zeros((self._num_rows,self._num_columns))
+        colors = np.ndarray((self._num_rows,self._num_columns), dtype='object')
         for col in range(self._num_columns):
             for row in range(self._num_rows):
                 if 'color' in self._cell_styles[row][col]:
                     # Somehow convert HTML color style to a number
-                    color = self.COLOR_NUM[self._cell_styles[row][col]['color']]
+                    color = self._cell_styles[row][col]['color']
                     colors[row][col] = color
         return colors
 
@@ -642,7 +633,8 @@ class IpyTable(object):
                 and 'float_format' in cell_style):
             text = cell_style['float_format'] % item
         else:
-            text = str(item)
+            # text = str(item)   # Should be unicode ???
+            text = unicode(item)
 
         # If cell wrapping is not specified
         if not ('wrap' in cell_style and cell_style['wrap']) and useHTML:
